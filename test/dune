@@ -1,0 +1,4 @@
+(test
+ (name polytypic_test)
+ (package polytypic)
+ (libraries polytypic qcheck))

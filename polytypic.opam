@@ -1,0 +1,17 @@
+opam-version: "2.0"
+synopsis: "A polytypic programming library"
+maintainer: "Nicolas Osborne <email@n-osborne.info>"
+authors: [
+  "Nicolas Osborne <email@n-osborne.info>"
+]
+build: [
+  ["dune" "subst"] {dev}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name] {with-test}
+]
+
+depends: [
+  "ocaml" {>= "4.12"}
+  "dune" {>= "2.0.0"}
+  "qcheck" {with-test}
+]
