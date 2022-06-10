@@ -1,2 +1,3 @@
 (library
- (name polytypic))
+ (name polytypic)
+ (libraries qcheck))

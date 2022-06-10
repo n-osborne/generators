@@ -7,13 +7,14 @@ open Polytypic
 module MList = struct
   type 'a t = 'a list
 
+  let polynome = FSum (FT, FProd (FPar, FRec))
   let rec inn = function [] -> T | x :: xs -> Prod (Par x, Rec (inn xs))
 
   let rec out = function
     | T -> []
     | Rec m -> out m
     | Prod (Par x, m) -> x :: out m
-    | _ -> failwith "this monome is not a list"
+    | _ -> failwith "this is not a list"
 end
 
 module PList = Make (MList)
@@ -25,6 +26,8 @@ type 'a tree = Leaf of 'a | Node of 'a * 'a tree * 'a tree
 module MTree = struct
   type 'a t = 'a tree
 
+  let polynome = FSum (FPar, FProd (FPar, FProd (FRec, FRec)))
+
   let rec inn = function
     | Leaf a -> Par a
     | Node (a, l, r) -> Prod (Par a, Prod (Rec (inn l), Rec (inn r)))
@@ -32,7 +35,7 @@ module MTree = struct
   let rec out = function
     | Par a -> Leaf a
     | Prod (Par a, Prod (Rec l, Rec r)) -> Node (a, out l, out r)
-    | _ -> assert false
+    | _ -> failwith "this is not a tree"
 end
 
 (* the expected behaviour of the functions *)
@@ -72,9 +75,9 @@ let tree gen i =
     Gen.(
       frequency
         [
-          (1, gen >>= fun a -> return (Leaf a));
+          (1, gen j >>= fun a -> return (Leaf a));
           ( i,
-            gen >>= fun a ->
+            gen j >>= fun a ->
             aux (i - 1) j >>= fun l ->
             aux (i - 1) j >>= fun r -> return (Node (a, l, r)) );
         ])
@@ -82,11 +85,7 @@ let tree gen i =
   aux i i
 
 (* a tree arbitrary with a printer *)
-let tree arb i =
-  match arb.print with
-  | None -> make (tree arb.gen i)
-  | Some pp -> make (tree arb.gen i) ~print:(Tree.print pp)
-
+let tree gen pp i = make (tree gen i) ~print:(Tree.print pp)
 let f c s = Char.escaped c ^ s
 
 (* Tests *)
@@ -99,7 +98,8 @@ let list_iso =
     ~name:"isomorphism between List and model" ~count:1000
 
 let tree_iso =
-  Test.make (tree int 10)
+  Test.make
+    (tree (fun _ -> Gen.int) Print.int 10)
     (fun l -> MTree.out (MTree.inn l) = l)
     ~name:"isomorphism between Tree and model" ~count:1000
 
@@ -131,24 +131,29 @@ let list_zip =
     ~name:"Derived list zip is consistent with Stdlib.List.combine" ~count:1000
 
 let tree_size =
-  Test.make (tree int 10)
+  Test.make
+    (tree (fun _ -> Gen.int) Print.int 10)
     (fun t -> Tree.size t = PTree.size t)
     ~name:"Derived tree size is consistent with Tree.size" ~count:1000
 
 let tree_map =
-  Test.make (tree int 10)
+  Test.make
+    (tree (fun _ -> Gen.int) Print.int 10)
     (fun t -> Tree.map succ t = PTree.map succ t)
     ~name:"Derived tree map is consistent with Tree.map" ~count:1000
 
 let tree_fold_right =
-  Test.make (tree char 10)
+  Test.make
+    (tree (fun _ -> Gen.char) Print.char 10)
     (fun l -> Tree.fold_right f l "" = PTree.fold_right f l "")
     ~name:"Derived tree fold_right is consistent with Tree.fold_right"
     ~count:1000
 
 let tree_zip =
   Test.make
-    (pair (tree int 10) (tree char 10))
+    (pair
+       (tree (fun _ -> Gen.int) Print.int 10)
+       (tree (fun _ -> Gen.char) Print.char 10))
     (fun (t0, t1) -> Tree.zip t0 t1 = PTree.zip t0 t1)
     ~name:"Derived tree zip is consistent with Tree.zip" ~count:1000
 

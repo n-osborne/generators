@@ -13,5 +13,5 @@ build: [
 depends: [
   "ocaml" {>= "4.12"}
   "dune" {>= "2.0.0"}
-  "qcheck" {with-test}
+  "qcheck"
 ]
