@@ -1,5 +1,5 @@
 open QCheck
-open Polytypic
+open Experiment.Polytypic
 
 (* setup *)
 
