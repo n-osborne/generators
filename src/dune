@@ -1,3 +1,4 @@
 (library
  (name experiment)
+ (modules Experiment polytypic Spaces transformation)
  (libraries qcheck))
