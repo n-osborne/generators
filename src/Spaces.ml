@@ -26,6 +26,24 @@ let rec sp_nat_list : nat list space =
 let rec sp_bool_list : bool list space =
   Pay (Sum (Pure [], Map (cons, Product (sp_bool, sp_bool_list))))
 
+type lambda_term =
+  | One
+  | Var of nat
+  | Lam of lambda_term
+  | App of (lambda_term * lambda_term)
+
+let var n = Var n
+let lam t = Lam t
+let app (f, a) = App (f, a)
+
+let rec sp_lambda_term =
+  Pay
+    (Sum
+       ( Sum (Pure One, Map (var, sp_nat)),
+         Sum
+           ( Map (lam, sp_lambda_term),
+             Map (app, Product (sp_lambda_term, sp_lambda_term)) ) ))
+
 module Naive = struct
   type _ set =
     | Empty : 'a set
