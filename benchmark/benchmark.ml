@@ -29,13 +29,13 @@ let () =
       Printf.fprintf oc "%s\n" data)
 
 let () =
-  let f i () = StoreCardinal.(uniform_sized sp_nat_list) (i + 1) |> ignore in
-  let data = List.init 20 f |> List.map time |> mk_data Float.to_string in
-  Out_channel.with_open_text "time_nat_list_store.data" (fun oc ->
-      Printf.fprintf oc "%s\n" data)
-
-let () =
   let f i () = Naive.(uniform_sized sp_nat_list) (i + 1) |> ignore in
   let data = List.init 20 f |> List.map time |> mk_data Float.to_string in
   Out_channel.with_open_text "time_nat_list_naive.data" (fun oc ->
+      Printf.fprintf oc "%s\n" data)
+
+let () =
+  let f i () = StoreCardinal.(uniform_sized sp_nat_list) (i + 1) |> ignore in
+  let data = List.init 20 f |> List.map time |> mk_data Float.to_string in
+  Out_channel.with_open_text "time_nat_list_store.data" (fun oc ->
       Printf.fprintf oc "%s\n" data)
