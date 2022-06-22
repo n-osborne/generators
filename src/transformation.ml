@@ -5,7 +5,7 @@ module Examples = struct
   let ( ++ ) = Seq.append
 
   (* vendored version of Seq.iterate (since 4.14) *)
-  let rec iterate f x () =
+  let iterate f x () =
     let open Seq in
     let y = f x in
     Cons (y, iterate f y)
