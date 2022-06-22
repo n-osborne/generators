@@ -1,3 +1,6 @@
+(* Experiment based on:
+   *Generating constrained random data with uniform distribution*, Koen Claessen, Jonas Duregard, Michal H. Palka (2015) DOI: 10.1007/978-3-319-07151-0_2 *)
+
 module Naive = struct
   type _ space =
     | Void : 'a space
@@ -75,14 +78,12 @@ module Naive = struct
   let s n = S n
   let rec sp_nat : nat space = Pay (Sum (Pure Z, Map (s, sp_nat)))
 
-  let rec sp_list (sp : 'a space) : 'a list space =
+  let rec sp_nat_list : nat list space =
     let cons (n, ns) = n :: ns in
-    Pay (Sum (Pure [], Map (cons, Product (sp, sp_list sp))))
-
-  let sp_nat_list = sp_list sp_nat
+    Pay (Sum (Pure [], Map (cons, Product (sp_nat, sp_nat_list))))
 end
 
-module Memoize = struct
+module StoreCardinal = struct
   type _ space =
     | Void : 'a space
     | Pure : 'a -> 'a space
@@ -145,6 +146,7 @@ module Memoize = struct
      | Map (f, s) -> sized s k |> mmap f
 
   let uniform_sized s k = uniform (sized s k)
+  let sp_bool = Sum (Pure true, Pure false)
 
   type nat = Z | S of nat
 
@@ -154,10 +156,11 @@ module Memoize = struct
 
   let s n = S n
   let rec sp_nat : nat space = Pay (Sum (Pure Z, Map (s, sp_nat)))
+  let cons (n, ns) = n :: ns
 
-  let rec sp_list (sp : 'a space) : 'a list space =
-    let cons (n, ns) = n :: ns in
-    Pay (Sum (Pure [], Map (cons, Product (sp, sp_list sp))))
+  let rec sp_nat_list : nat list space =
+    Pay (Sum (Pure [], Map (cons, Product (sp_nat, sp_nat_list))))
 
-  let sp_nat_list = sp_list sp_nat
+  let rec sp_bool_list : bool list space =
+    Pay (Sum (Pure [], Map (cons, Product (sp_bool, sp_bool_list))))
 end
