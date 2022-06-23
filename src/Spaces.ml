@@ -133,9 +133,9 @@ module StoreCardinal = struct
   let rec index : 'a. 'a set -> int -> 'a =
     fun (type a) (s : a set) i ->
      match s.set with
-     | Empty -> assert false
+     | Empty -> failwith "empty set"
      | Singleton a when i = 0 -> a
-     | Singleton _ -> assert false
+     | Singleton _ -> failwith "index out of range"
      | Union (l, _) when i < l.cardinal -> index l i
      | Union (l, r) -> index r (i - l.cardinal)
      | CartesianProduct (l, r) ->
@@ -143,7 +143,7 @@ module StoreCardinal = struct
      | Map (f, s') -> f (index s' i)
 
   let uniform s =
-    if s.cardinal = 0 then failwith "empty set"
+    if s.cardinal = 0 then failwith "cardinality is 0"
     else
       let i = Random.int s.cardinal in
       index s i
@@ -153,7 +153,11 @@ module StoreCardinal = struct
      match s with
      | Void -> { set = Empty; cardinal = 0 }
      | Pure a -> if k = 0 then singleton a else { set = Empty; cardinal = 0 }
+     | Sum (Pure _, s) | Sum (s, Pure _) when k > 0 -> sized s k
+     | Sum (Pay _, s) | Sum (s, Pay _) when k = 0 -> sized s k
      | Sum (l, r) -> union (sized l k) (sized r k)
+     | Product (Pure _, _) | Product (_, Pure _) when k > 0 -> { set = Empty; cardinal = 0 }
+     | Product (Pay _, _) | Product (_, Pay _) when k = 0 -> { set = Empty; cardinal = 0 }
      | Product (l, r) ->
          let ks =
            List.map (fun k0 -> (k0, k - k0)) (List.init (k + 1) Fun.id)

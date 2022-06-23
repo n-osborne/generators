@@ -42,4 +42,4 @@ let () =
 let () =
   space "time_nat_list_store.data"
     StoreCardinal.(uniform_sized sp_nat_list)
-    24 Float.to_string ()
+    25 Float.to_string ()
