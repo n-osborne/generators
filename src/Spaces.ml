@@ -102,7 +102,11 @@ module Naive = struct
      | Pay s -> if k = 0 then Empty else sized s (k - 1)
      | Map (f, s) -> Map (f, sized s k)
 
-  let uniform_sized s k = uniform (sized s k)
+  (* partial application allow to compute [sized s k] only one time *)
+  let uniform_sized s k =
+    let s = sized s k in
+    fun () -> uniform s
+  (* let uniform_sized s k = uniform (sized s k) *)
 end
 
 module StoreCardinal = struct
@@ -159,6 +163,7 @@ module StoreCardinal = struct
      | Pay s -> if k = 0 then { set = Empty; cardinal = 0 } else sized s (k - 1)
      | Map (f, s) -> sized s k |> map f
 
+  (* partial application allow to compute [sized s k] only one time *)
   let uniform_sized s k =
     let s = sized s k in
     fun () -> uniform s

@@ -8,10 +8,11 @@ let int_of_binary l =
   in
   aux 0 l
 
-let time f =
+let time f i =
   let t = Mtime_clock.counter () in
+  let g = f i in
   for _ = 0 to 9 do
-    try f () with _ -> ()
+    try g () |> ignore with _ -> ()
   done;
   Mtime.Span.to_ms (Mtime_clock.count t)
 
@@ -29,13 +30,17 @@ let () =
       Printf.fprintf oc "%s\n" data)
 
 let () =
-  let f i () = Naive.(uniform_sized sp_nat_list) (i + 1) |> ignore in
-  let data = List.init 20 f |> List.map time |> mk_data Float.to_string in
+  let f i = Naive.(uniform_sized sp_nat_list) (i + 1) in
+  let data =
+    List.init 20 Fun.id |> List.map (time f) |> mk_data Float.to_string
+  in
   Out_channel.with_open_text "time_nat_list_naive.data" (fun oc ->
       Printf.fprintf oc "%s\n" data)
 
 let () =
-  let f i () = StoreCardinal.(uniform_sized sp_nat_list) (i + 1) () |> ignore in
-  let data = List.init 20 f |> List.map time |> mk_data Float.to_string in
+  let f i = StoreCardinal.(uniform_sized sp_nat_list) (i + 1) in
+  let data =
+    List.init 20 Fun.id |> List.map (time f) |> mk_data Float.to_string
+  in
   Out_channel.with_open_text "time_nat_list_store.data" (fun oc ->
       Printf.fprintf oc "%s\n" data)

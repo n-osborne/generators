@@ -14,13 +14,13 @@ the occurences of the different numbers.
 </div>
 
 
-## The generator is exponential w.r.t the size of the data
+## Time complexity w.r.t size
 
-In order to measure the performance of the genrator in time,
-we measure the time taken to generate 10 list of natural number
-with a size in number of constructor ranging over $[1..20]$ with
-the naive approach and a small optimisation consisting of storing
-the cardinal of the sets rather than recomputing it.
+In order to measure the performance of the genrator in time, we
+measure the time taken to generate 10 list of natural number with a
+size in number of constructor ranging over $[1..20]$ with the naive
+approach and an optimisation consisting of storing the cardinal of the
+sets rather than recomputing it.
 
 <div align="center">
 	<img src="time_nat_list.png" title="Time of generation depending on size" />
