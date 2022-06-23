@@ -1,4 +1,7 @@
 (library
  (name experiment)
  (modules Experiment polytypic Spaces transformation)
- (libraries qcheck))
+ (libraries qcheck either))
+(env
+  (dev
+    (flags (:standard -warn-error -A))))

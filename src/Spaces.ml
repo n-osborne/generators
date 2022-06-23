@@ -8,6 +8,8 @@ type _ space =
   | Pay : 'a space -> 'a space
   | Map : ('a -> 'b) * 'a space -> 'b space
 
+type 'a predicate = 'a -> bool option
+
 let sp_bool = Sum (Pure true, Pure false)
 
 type nat = Z | S of nat
@@ -20,8 +22,15 @@ let s n = S n
 let rec sp_nat : nat space = Pay (Sum (Pure Z, Map (s, sp_nat)))
 let cons (n, ns) = n :: ns
 
-let rec sp_nat_list : nat list space =
-  Pay (Sum (Pure [], Map (cons, Product (sp_nat, sp_nat_list))))
+let rec sp_nat_list = Pay (Sum (sp_nil, sp_cons))
+and sp_nil = Pure []
+and sp_cons = Map (cons, Product (sp_nat, sp_nat_list))
+
+let sorted : nat list predicate = function
+  | [] -> Some true
+  | [ _ ] -> Some true
+  | [ m; n ] -> Some (m <= n)
+  | m :: n :: _ -> if m <= n then None else Some false
 
 let rec sp_bool_list : bool list space =
   Pay (Sum (Pure [], Map (cons, Product (sp_bool, sp_bool_list))))
@@ -37,12 +46,12 @@ let lam t = Lam t
 let app (f, a) = App (f, a)
 
 let rec sp_lambda_term =
-  Pay
-    (Sum
-       ( Sum (Pure One, Map (var, sp_nat)),
-         Sum
-           ( Map (lam, sp_lambda_term),
-             Map (app, Product (sp_lambda_term, sp_lambda_term)) ) ))
+  Pay (Sum (Sum (value, variable)), Sum (abstraction, redex))
+
+and value = Pure One
+and variable = Map (var, sp_nat)
+and abstraction = Map (lam, sp_lambda_term)
+and redex = Map (app, Product (sp_lambda_term, sp_lambda_term))
 
 module Naive = struct
   type _ set =
@@ -153,11 +162,13 @@ module StoreCardinal = struct
      match s with
      | Void -> { set = Empty; cardinal = 0 }
      | Pure a -> if k = 0 then singleton a else { set = Empty; cardinal = 0 }
-     | Sum (Pure _, s) | Sum (s, Pure _) when k > 0 -> sized s k
-     | Sum (Pay _, s) | Sum (s, Pay _) when k = 0 -> sized s k
+     | (Sum (Pure _, s) | Sum (s, Pure _)) when k > 0 -> sized s k
+     | (Sum (Pay _, s) | Sum (s, Pay _)) when k = 0 -> sized s k
      | Sum (l, r) -> union (sized l k) (sized r k)
-     | Product (Pure _, _) | Product (_, Pure _) when k > 0 -> { set = Empty; cardinal = 0 }
-     | Product (Pay _, _) | Product (_, Pay _) when k = 0 -> { set = Empty; cardinal = 0 }
+     | (Product (Pure _, _) | Product (_, Pure _)) when k > 0 ->
+         { set = Empty; cardinal = 0 }
+     | (Product (Pay _, _) | Product (_, Pay _)) when k = 0 ->
+         { set = Empty; cardinal = 0 }
      | Product (l, r) ->
          let ks =
            List.map (fun k0 -> (k0, k - k0)) (List.init (k + 1) Fun.id)
@@ -167,9 +178,42 @@ module StoreCardinal = struct
      | Pay s -> if k = 0 then { set = Empty; cardinal = 0 } else sized s (k - 1)
      | Map (f, s) -> sized s k |> map f
 
+  let rec sizedP :
+            'a. 'a predicate -> 'a space -> int -> ('a, 'a space) Either.t =
+    fun (type a) p (s : a space) k ->
+     let open Either in
+     match s with
+     | Void -> Right Void
+     | Pure a ->
+         if k = 0 then match p a with Some true -> Left a | _ -> Right Void
+         else Right Void
+     | (Sum (Pure _, s) | Sum (s, Pure _)) when k > 0 -> sizedP p s k
+     | (Sum (Pay _, s) | Sum (s, Pay _)) when k = 0 -> sizedP p s k
+     | Sum (l, r) -> assert false
+     | (Product (Pure _, _) | Product (_, Pure _)) when k > 0 -> Right Void
+     | (Product (Pay _, _) | Product (_, Pay _)) when k = 0 -> Right Void
+     | Product (l, r) -> assert false
+     | Pay s -> if k = 0 then Right Void else sizedP p s (k - 1)
+     | Map (f, s) ->
+         let _p' x = p (f x) in
+         let _apply f = function
+           | Left x -> Left (f x)
+           | Right sp -> Right (Map (f, sp))
+         in
+         assert false
+
   (* partial application allow to compute [sized s k] only one time *)
   let uniform_sized s k =
     let s = sized s k in
     fun () -> uniform s
   (* uniform (sized s k) *)
+end
+
+module Predicate = struct
+  type 'a predicate =
+    | Universally of bool
+    | Indeterminate of ('a -> 'a predicate)
+
+  let run_predicate : 'a predicate -> 'a -> 'a predicate =
+   fun p a -> match p with Indeterminate f -> f a | p -> p
 end
