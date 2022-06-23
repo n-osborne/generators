@@ -19,7 +19,7 @@ let mk_data f l = List.map f l |> String.concat ","
 
 let () =
   let bs =
-    List.init 10000 (fun _ -> StoreCardinal.(uniform_sized sp_bool_list) 10)
+    List.init 10000 (fun _ -> StoreCardinal.(uniform_sized sp_bool_list) 10 ())
   in
   let ns = List.map int_of_binary bs in
   let a = Array.make 512 0 in
@@ -35,7 +35,7 @@ let () =
       Printf.fprintf oc "%s\n" data)
 
 let () =
-  let f i () = StoreCardinal.(uniform_sized sp_nat_list) (i + 1) |> ignore in
+  let f i () = StoreCardinal.(uniform_sized sp_nat_list) (i + 1) () |> ignore in
   let data = List.init 20 f |> List.map time |> mk_data Float.to_string in
   Out_channel.with_open_text "time_nat_list_store.data" (fun oc ->
       Printf.fprintf oc "%s\n" data)

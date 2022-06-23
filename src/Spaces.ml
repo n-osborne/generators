@@ -159,5 +159,8 @@ module StoreCardinal = struct
      | Pay s -> if k = 0 then { set = Empty; cardinal = 0 } else sized s (k - 1)
      | Map (f, s) -> sized s k |> map f
 
-  let uniform_sized s k = uniform (sized s k)
+  let uniform_sized s k =
+    let s = sized s k in
+    fun () -> uniform s
+  (* uniform (sized s k) *)
 end
