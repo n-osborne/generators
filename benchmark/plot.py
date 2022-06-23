@@ -20,13 +20,13 @@ def time_nat_list():
         reader = csv.reader(csvfile, delimiter=',')
         data_store = np.array([[ float(s) for s in row] for row in reader])[0]
 
-    assert(len(data_store) == len(data_naive))
 
-    X = np.arange(1, len(data_store)+1)
-    plt.plot(X,data_naive, color='b', label='naive')
-    plt.plot(X,data_store, color='r', label='store cardinal')
+    Xn = np.arange(1, len(data_naive)+1)
+    Xs = np.arange(1, len(data_store)+1)
+    plt.plot(Xn,data_naive, color='b', label='naive')
+    plt.plot(Xs,data_store, color='r', label='store cardinal')
     plt.xlabel('Size of the generated data')
-    plt.ylabel('Time in ms for generating 10 datas')
+    plt.ylabel('Time in ms')
     plt.legend()
     plt.savefig('time_nat_list.png')
     plt.clf()

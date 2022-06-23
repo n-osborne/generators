@@ -29,18 +29,17 @@ let () =
   Out_channel.with_open_text "distribution_bool_list.data" (fun oc ->
       Printf.fprintf oc "%s\n" data)
 
-let () =
-  let f i = Naive.(uniform_sized sp_nat_list) (i + 1) in
-  let data =
-    List.init 20 Fun.id |> List.map (time f) |> mk_data Float.to_string
-  in
-  Out_channel.with_open_text "time_nat_list_naive.data" (fun oc ->
-      Printf.fprintf oc "%s\n" data)
+let space path g n to_string () =
+  let sizes = List.init n succ in
+  let data = List.map (time g) sizes |> mk_data to_string in
+  Out_channel.with_open_text path (fun oc -> Printf.fprintf oc "%s\n" data)
 
 let () =
-  let f i = StoreCardinal.(uniform_sized sp_nat_list) (i + 1) in
-  let data =
-    List.init 20 Fun.id |> List.map (time f) |> mk_data Float.to_string
-  in
-  Out_channel.with_open_text "time_nat_list_store.data" (fun oc ->
-      Printf.fprintf oc "%s\n" data)
+  space "time_nat_list_naive.data"
+    Naive.(uniform_sized sp_nat_list)
+    21 Float.to_string ()
+
+let () =
+  space "time_nat_list_store.data"
+    StoreCardinal.(uniform_sized sp_nat_list)
+    24 Float.to_string ()
