@@ -1,4 +1,4 @@
 (test
  (name polytypic_test)
- (package polytypic)
+ (package generators)
  (libraries experiment qcheck))
