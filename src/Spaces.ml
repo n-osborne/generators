@@ -210,10 +210,58 @@ module StoreCardinal = struct
 end
 
 module Predicate = struct
+  (** partially defined value and predicate on them in order to lazyly
+      explore a space, and prune it when needed *)
+
+  (* a type for partial values
+
+     - this should obviously include bottom
+     - a totally defined value is a partially defined value
+     - a partially evaluated (functional) constructor is a partially defined value
+
+     partially defined list is: `1::2::⊥`
+
+     Pure 1 : int partial
+     App (fun x -> Leaf x, Bot) : tree partial ≡  Leaf ⊥
+     App (Pure (fun x y -> x :: y), 1) : int list -> int list partial ≡ fun l -> 1::l
+  *)
+  type _ partial =
+    | Bottom : 'a partial
+    | Pure : 'a -> 'a partial (* injection of total values in partial values *)
+    | App :
+        ('a -> 'b) partial * 'a partial
+        -> 'b partial (* partial is an applicative functor *)
+
+  let cons : (int -> int list -> int list) partial = Pure (fun x xs -> x :: xs)
+  let nil : int list partial = Pure []
+  let one : int partial = Pure 1
+  let two : int partial = Pure 2
+  let three : int partial = Pure 3
+  let ( @@@ ) (x : int partial) (xs : int list partial) = App (App (cons, x), xs)
+  let one_two_three : int list partial = one @@@ two @@@ three @@@ nil
+  let one_two_three_bot : int list partial = one @@@ two @@@ three @@@ Bottom
+
+  let rec reduce : type a. a partial -> a partial = function
+    | App (Pure f, Pure a) -> Pure (f a)
+    | p -> p
+
+  let rec unwrap : type a. a partial -> a option = function
+    | Bottom -> None
+    | Pure a -> Some a
+    | App (f, a) -> (
+        match (unwrap f, unwrap a) with
+        | Some f, Some a -> Some (f a)
+        | _, _ -> None)
+
   type 'a predicate =
     | Universally of bool
-    | Indeterminate of ('a -> 'a predicate)
+    | Indeterminate of ('a partial -> 'a predicate)
 
-  let run_predicate : 'a predicate -> 'a -> 'a predicate =
-   fun p a -> match p with Indeterminate f -> f a | p -> p
+  let run_predicate : 'a predicate -> 'a partial -> 'a predicate =
+   fun p a ->
+    match (p, a) with
+    | Indeterminate _, Bottom -> p
+    | Indeterminate f, Pure _ -> f a
+    | Indeterminate _, App (f, a) -> p
+    | _, _ -> p
 end
