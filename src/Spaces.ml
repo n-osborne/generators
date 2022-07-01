@@ -228,40 +228,125 @@ module Predicate = struct
   type _ partial =
     | Bottom : 'a partial
     | Pure : 'a -> 'a partial (* injection of total values in partial values *)
-    | App :
-        ('a -> 'b) partial * 'a partial
-        -> 'b partial (* partial is an applicative functor *)
+    | App1 :
+        ('a -> 'a) partial * 'a partial
+        -> 'a partial (* partial is an applicative functor *)
+    | App2 : ('a -> 'b -> 'b) partial * 'a partial * 'b partial -> 'b partial
 
   let cons : (int -> int list -> int list) partial = Pure (fun x xs -> x :: xs)
   let nil : int list partial = Pure []
   let one : int partial = Pure 1
   let two : int partial = Pure 2
   let three : int partial = Pure 3
-  let ( @@@ ) (x : int partial) (xs : int list partial) = App (App (cons, x), xs)
+  let ( @@@ ) (x : int partial) (xs : int list partial) = App2 (cons, x, xs)
   let one_two_three : int list partial = one @@@ two @@@ three @@@ nil
+  let three_two_one : int list partial = three @@@ two @@@ one @@@ nil
   let one_two_three_bot : int list partial = one @@@ two @@@ three @@@ Bottom
+  let three_two_one_bot : int list partial = three @@@ two @@@ one @@@ Bottom
+
+  (* utop #  one_two_three_bot;;
+     - : int list partial =
+     App (App (Pure <fun>, Pure <poly>),
+      App (App (Pure <fun>, Pure <poly>),
+       App (App (Pure <fun>, Pure <poly>), Bottom)))
+  *)
 
   let rec reduce : type a. a partial -> a partial = function
-    | App (Pure f, Pure a) -> Pure (f a)
+    | App1 (f, a) -> (
+        match (reduce f, reduce a) with
+        | Pure f, Pure a -> Pure (f a)
+        | f, a -> App1 (f, a))
+    | App2 (f, a, b) -> (
+        match (reduce f, reduce a, reduce b) with
+        | Pure f, Pure a, Pure b -> Pure (f a b)
+        | Pure f, Pure a, b -> App1 (Pure (f a), b)
+        | f, a, b -> App2 (f, a, b))
     | p -> p
+
+  (* utop # reduce one_two_three_bot;;
+     - : int list partial =
+     App (Pure <fun>, App (Pure <fun>, App (Pure <fun>, Bottom)))
+  *)
 
   let rec unwrap : type a. a partial -> a option = function
     | Bottom -> None
     | Pure a -> Some a
-    | App (f, a) -> (
+    | App1 (f, a) -> (
         match (unwrap f, unwrap a) with
         | Some f, Some a -> Some (f a)
         | _, _ -> None)
+    | App2 (f, a, b) -> (
+        match (unwrap f, unwrap a, unwrap b) with
+        | Some f, Some a, Some b -> Some (f a b)
+        | _, _, _ -> None)
 
   type 'a predicate =
     | Universally of bool
     | Indeterminate of ('a partial -> 'a predicate)
 
+  let sorted : int list predicate =
+    let rec p : int list partial -> int list predicate = function
+      | Pure [] -> Universally true
+      | Pure [ _ ] -> Universally true
+      | Pure (m :: n :: ns) ->
+          if m > n then Universally false else p (Pure (n :: ns))
+      | App2 (Pure f, Pure m, App2 (Pure f, Pure n, ns)) ->
+          if m > n then Universally false else p (App2 (f, Pure n, ns))
+      | _ -> Indeterminate p
+    in
+    Indeterminate p
+
   let run_predicate : 'a predicate -> 'a partial -> 'a predicate =
    fun p a ->
-    match (p, a) with
+    match (p, reduce a) with
+    | Indeterminate p, Pure a -> p (Pure a)
+    | Indeterminate _, App1 _ -> p
     | Indeterminate _, Bottom -> p
-    | Indeterminate f, Pure _ -> f a
-    | Indeterminate _, App (f, a) -> p
     | _, _ -> p
+
+  (* utop # run_predicate sorted one_two_three;;
+     - : int list predicate = Universally true
+
+     utop # run_predicate sorted three_two_one;;
+     - : int list predicate = Universally false
+
+     utop # run_predicate sorted one_two_three_bot;;
+     - : int list predicate = Indeterminate <fun>
+
+     utop # run_predicate sorted three_two_one_bot;;
+     - : int list predicate = Indeterminate <fun>
+
+     XXX: does not work
+  *)
+end
+
+module Partial = struct
+  (* given an ADT, it is possible to derive (e.g. with a ppx) the corresponding type of partial value *)
+  type 'a plist = Bot | Nil | Cons of 'a * 'a plist
+  (* *Note:*
+     the value can only be partial in the inductive argument (Bot : 'a plist)
+     or 'a need to be a type of partial value
+  *)
+
+  type 'a predicate = Always of bool | Indeterminate of ('a -> 'a predicate)
+
+  let run (p : 'a predicate) (a : 'a) =
+    match p with Indeterminate f -> f a | _ -> p
+
+  let ( @@@ ) x xs = Cons (x, xs)
+  let one_two_three = 1 @@@ 2 @@@ 3 @@@ Nil
+  let three_two_one = 3 @@@ 2 @@@ 1 @@@ Nil
+  let one_two_three_bot = 1 @@@ 2 @@@ 3 @@@ Bot
+  let three_two_one_bot = 3 @@@ 2 @@@ 1 @@@ Bot
+
+  let sorted : int plist predicate =
+    let rec p = function
+      | Bot -> Indeterminate p
+      | Cons (_, Bot) -> Indeterminate p
+      | Nil -> Always true
+      | Cons (_, Nil) -> Always true
+      | Cons (m, Cons (n, ns)) ->
+          if m > n then Always false else p (Cons (n, ns))
+    in
+    Indeterminate p
 end
