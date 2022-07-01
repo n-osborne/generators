@@ -46,7 +46,7 @@ let lam t = Lam t
 let app (f, a) = App (f, a)
 
 let rec sp_lambda_term =
-  Pay (Sum (Sum (value, variable)), Sum (abstraction, redex))
+  Pay (Sum (Sum (value, variable), Sum (abstraction, redex)))
 
 and value = Pure One
 and variable = Map (var, sp_nat)
