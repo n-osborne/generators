@@ -1,3 +1,9 @@
 (executable
  (name benchmark)
+ (modules benchmark)
  (libraries mtime.clock.os experiment))
+
+(executable
+ (name bench_transformation)
+ (modules bench_transformation)
+ (libraries experiment))

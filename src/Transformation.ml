@@ -30,8 +30,15 @@ module Examples = struct
 
   let succ n = S n
   let rec from_int = function 0 -> Z | n -> from_int (n - 1) |> succ
+  let rec to_int = function Z -> 0 | S n -> 1 + to_int n
   let nat_gen () = Random.int 10 |> from_int
-  let nats = List.(to_seq (map from_int (init 10 Fun.id)))
+
+  let gte n =
+    let i = to_int n in
+    assert (i < 10);
+    List.(to_seq (init (10 - i) (fun x -> x + i |> from_int)))
+
+  let nats = gte Z
 
   (* preorder:
      - (Z, m) \in Preorder
@@ -73,6 +80,19 @@ module Examples = struct
      - [x] \in Sorted
      - (x, y) \in Preorder -> y::ys \in Sorted -> x::y::ys \in Sorted
   *)
+  let rec sorted (input : nat list) : nat list Seq.t =
+    (* first case: the empty list is sorted *)
+    (Seq.return input %-> function [] -> Seq.return [] | _ -> Seq.empty)
+    (* second case: singleton is sorted *)
+    ++ (Seq.return input %-> function
+        | [ x ] -> Seq.return [ x ]
+        | _ -> Seq.empty)
+    (* third case: the inductive one *)
+    ++ Seq.return input %-> function
+       | x :: _ :: xs ->
+           gte x %-> fun y ->
+           sorted (y :: xs) %-> fun xs -> Seq.return (x :: xs)
+       | _ -> Seq.empty
 
   (* sorted as a binary relation between the head and the rest of the lsit
      - (None, []) \in Sorted
