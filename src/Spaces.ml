@@ -225,33 +225,46 @@ module Predicate = struct
      App (fun x -> Leaf x, Bot) : tree partial ≡  Leaf ⊥
      App (Pure (fun x y -> x :: y), 1) : int list -> int list partial ≡ fun l -> 1::l
   *)
-  type _ partial =
-    | Bottom : 'a partial
-    | Pure : 'a -> 'a partial (* injection of total values in partial values *)
+  type ('b, 'a) partial =
+    | Bottom : ('b, 'a) partial
+    | Pure :
+        'a
+        -> ('b, 'a) partial (* injection of total values in partial values *)
     | App1 :
-        ('a -> 'a) partial * 'a partial
-        -> 'a partial (* partial is an applicative functor *)
-    | App2 : ('a -> 'b -> 'b) partial * 'a partial * 'b partial -> 'b partial
+        ('b, 'a -> 'a) partial * ('b, 'a) partial
+        -> ('b, 'a) partial (* partial is an applicative functor *)
+    | App2 :
+        ('b, 'b -> 'a -> 'a) partial * ('b, 'b) partial * ('b, 'a) partial
+        -> ('b, 'a) partial
 
-  let cons : (int -> int list -> int list) partial = Pure (fun x xs -> x :: xs)
-  let nil : int list partial = Pure []
-  let one : int partial = Pure 1
-  let two : int partial = Pure 2
-  let three : int partial = Pure 3
-  let ( @@@ ) (x : int partial) (xs : int list partial) = App2 (cons, x, xs)
-  let one_two_three : int list partial = one @@@ two @@@ three @@@ nil
-  let three_two_one : int list partial = three @@@ two @@@ one @@@ nil
-  let one_two_three_bot : int list partial = one @@@ two @@@ three @@@ Bottom
-  let three_two_one_bot : int list partial = three @@@ two @@@ one @@@ Bottom
+  let cons : (int, int -> int list -> int list) partial =
+    Pure (fun x xs -> x :: xs)
 
-  (* utop #  one_two_three_bot;;
-     - : int list partial =
-     App (App (Pure <fun>, Pure <poly>),
-      App (App (Pure <fun>, Pure <poly>),
-       App (App (Pure <fun>, Pure <poly>), Bottom)))
+  let nil : (int, int list) partial = Pure []
+  let one : (int, int) partial = Pure 1
+  let two : (int, int) partial = Pure 2
+  let three : (int, int) partial = Pure 3
+
+  let ( @@@ ) (x : (int, int) partial) (xs : (int, int list) partial) =
+    App2 (cons, x, xs)
+
+  let singleton_one : (int, int list) partial = one @@@ nil
+  let one_two_three : (int, int list) partial = one @@@ two @@@ three @@@ nil
+  let three_two_one : (int, int list) partial = three @@@ two @@@ one @@@ nil
+
+  let one_two_three_bot : (int, int list) partial =
+    one @@@ two @@@ three @@@ Bottom
+
+  let three_two_one_bot : (int, int list) partial =
+    three @@@ two @@@ one @@@ Bottom
+
+  (* # one_two_three_bot;;
+     - : (int, int list) partial =
+     App2 (Pure <fun>, Pure 1,
+      App2 (Pure <fun>, Pure 2, App2 (Pure <fun>, Pure 3, Bottom)))
   *)
 
-  let rec reduce : type a. a partial -> a partial = function
+  let rec reduce : type a b. (b, a) partial -> (b, a) partial = function
     | App1 (f, a) -> (
         match (reduce f, reduce a) with
         | Pure f, Pure a -> Pure (f a)
@@ -264,11 +277,11 @@ module Predicate = struct
     | p -> p
 
   (* utop # reduce one_two_three_bot;;
-     - : int list partial =
-     App (Pure <fun>, App (Pure <fun>, App (Pure <fun>, Bottom)))
+     - : (int, int list) partial =
+     App1 (Pure <fun>, App1 (Pure <fun>, App1 (Pure <fun>, Bottom)))
   *)
 
-  let rec unwrap : type a. a partial -> a option = function
+  let rec unwrap : type a b. (b, a) partial -> a option = function
     | Bottom -> None
     | Pure a -> Some a
     | App1 (f, a) -> (
@@ -280,44 +293,32 @@ module Predicate = struct
         | Some f, Some a, Some b -> Some (f a b)
         | _, _, _ -> None)
 
-  type 'a predicate =
+  type ('b, 'a) predicate =
     | Universally of bool
-    | Indeterminate of ('a partial -> 'a predicate)
+    | Indeterminate of (('b, 'a) partial -> ('b, 'a) predicate)
 
-  let sorted : int list predicate =
-    let rec p : int list partial -> int list predicate = function
+  let sorted : (int, int list) predicate =
+    let rec p : (int, int list) partial -> (int, int list) predicate = function
       | Pure [] -> Universally true
       | Pure [ _ ] -> Universally true
       | Pure (m :: n :: ns) ->
           if m > n then Universally false else p (Pure (n :: ns))
-      | App2 (Pure f, Pure m, App2 (Pure f, Pure n, ns)) ->
+      | App2 (_, Pure _, Pure []) -> Universally true
+      | App2 (_, Pure m, App2 (f, Pure n, ns)) ->
           if m > n then Universally false else p (App2 (f, Pure n, ns))
       | _ -> Indeterminate p
     in
     Indeterminate p
 
-  let run_predicate : 'a predicate -> 'a partial -> 'a predicate =
+  let run_predicate :
+      ('b, 'a) predicate -> ('b, 'a) partial -> ('b, 'a) predicate =
    fun p a ->
-    match (p, reduce a) with
-    | Indeterminate p, Pure a -> p (Pure a)
-    | Indeterminate _, App1 _ -> p
-    | Indeterminate _, Bottom -> p
-    | _, _ -> p
-
-  (* utop # run_predicate sorted one_two_three;;
-     - : int list predicate = Universally true
-
-     utop # run_predicate sorted three_two_one;;
-     - : int list predicate = Universally false
-
-     utop # run_predicate sorted one_two_three_bot;;
-     - : int list predicate = Indeterminate <fun>
-
-     utop # run_predicate sorted three_two_one_bot;;
-     - : int list predicate = Indeterminate <fun>
-
-     XXX: does not work
-  *)
+    match p with
+    | Indeterminate p ->
+        (* XXX TODO: understand behaviour w.r.t reducing the partial value *)
+        let p = p a in
+        p
+    | _ -> p
 end
 
 module Partial = struct

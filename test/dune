@@ -9,3 +9,9 @@
  (modules transformation_test)
  (package generators)
  (libraries experiment qcheck))
+
+(test
+ (name spaces_test)
+ (modules spaces_test)
+ (package generators)
+ (libraries experiment alcotest))
