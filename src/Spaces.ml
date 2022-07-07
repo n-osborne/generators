@@ -299,11 +299,30 @@ module Predicate = struct
 
   let sorted : (int, int list) predicate =
     let rec p : (int, int list) partial -> (int, int list) predicate = function
+      (* empty list is sorted *)
       | Pure [] -> Universally true
+      (* singeltons are sorted, but need two cases to express this property on the data type *)
+      (* to be exact, the first case is not needed and is contained in the pure case *)
       | Pure [ _ ] -> Universally true
+      | App2 (_, Pure _, Pure []) -> Universally true
+      (* pure lists are sorted if the list is - could use a predicate on total value *)
       | Pure (m :: n :: ns) ->
           if m > n then Universally false else p (Pure (n :: ns))
-      | App2 (_, Pure _, Pure []) -> Universally true
+      (* inductive case *)
+      | App2 (_, Pure m, App2 (f, Pure n, ns)) ->
+          if m > n then Universally false else p (App2 (f, Pure n, ns))
+      | _ -> Indeterminate p
+    in
+    Indeterminate p
+
+  let rec sorted' = function
+    | [] | [ _ ] -> true
+    | x :: y :: ys -> x <= y && sorted' (y :: ys)
+
+  (* better version of predicate over partial values *)
+  let sorted : (int, int list) predicate =
+    let rec p = function
+      | Pure xs -> Universally (sorted' xs)
       | App2 (_, Pure m, App2 (f, Pure n, ns)) ->
           if m > n then Universally false else p (App2 (f, Pure n, ns))
       | _ -> Indeterminate p
@@ -314,10 +333,9 @@ module Predicate = struct
       ('b, 'a) predicate -> ('b, 'a) partial -> ('b, 'a) predicate =
    fun p a ->
     match p with
-    | Indeterminate p ->
+    | Indeterminate p -> (
         (* XXX TODO: understand behaviour w.r.t reducing the partial value *)
-        let p = p a in
-        p
+        match p a with Indeterminate _ -> p (reduce a) | p -> p)
     | _ -> p
 end
 
