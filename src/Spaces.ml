@@ -297,6 +297,32 @@ module Predicate = struct
     | Universally of bool
     | Indeterminate of (('b, 'a) partial -> ('b, 'a) predicate)
 
+  type ('a, 'b) case =
+    ((* recursive call *)
+     ('a, 'b) partial -> ('a, 'b) predicate) ->
+    (* pattern *)
+    ('a, 'b) partial ->
+    (* corresponding optional predicate *)
+    ('a, 'b) predicate option
+
+  let apply (case : ('a, 'b) case) :
+      ('a, 'b) partial -> ('a, 'b) predicate option =
+    case (fun _ -> Universally false)
+
+  let rec find_pred p v = function
+    | [] -> Indeterminate p
+    | p' :: ps -> (
+        match apply p' v with None -> find_pred p v ps | Some x -> x)
+
+  let mk_predicate : ('b -> bool) -> ('a, 'b) case list -> ('a, 'b) predicate =
+   fun pred cases ->
+    let rec p = function
+      | Pure v -> Universally (pred v)
+      | Bottom -> Indeterminate p
+      | v -> find_pred p v cases
+    in
+    Indeterminate p
+
   let sorted : (int, int list) predicate =
     let rec p : (int, int list) partial -> (int, int list) predicate = function
       (* empty list is sorted *)
@@ -328,6 +354,20 @@ module Predicate = struct
       | _ -> Indeterminate p
     in
     Indeterminate p
+
+  (* XXX does not work
+     let sorted : (int, int list) predicate =
+       let cases =
+         [
+           (fun p -> function
+             | App2 (_, Pure m, App2 (f, Pure n, ns)) ->
+                 if m > n then Some (Universally false)
+                 else Some (p (App2 (f, Pure n, ns)))
+             | _ -> None);
+         ]
+       in
+       mk_predicate sorted' cases
+  *)
 
   let run_predicate :
       ('b, 'a) predicate -> ('b, 'a) partial -> ('b, 'a) predicate =
