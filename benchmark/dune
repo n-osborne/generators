@@ -4,6 +4,11 @@
  (libraries mtime.clock.os experiment))
 
 (executable
+ (name bench_gen_complete)
+ (modules bench_gen_complete)
+ (libraries mtime.clock.os experiment))
+
+(executable
  (name bench_transformation)
  (modules bench_transformation)
  (libraries experiment))

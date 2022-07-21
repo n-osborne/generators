@@ -1,0 +1,29 @@
+open Experiment.Transformation.Examples
+open Experiment.Transformation.Examples2
+
+let is_sorted l =
+  let rec aux = function
+    | [] -> true
+    | [ _ ] -> true
+    | m :: n :: ns -> m <= n && aux (n :: ns)
+  in
+  List.map to_int l |> aux
+
+let nat_gen = QCheck.Gen.(oneof List.(init 10 (fun i -> return (from_int i))))
+let gen = QCheck.Gen.(list_size (return 10) nat_gen)
+
+let sorted_test =
+  QCheck.Test.make (QCheck.make gen)
+    (fun l ->
+      let s = sorted l in
+      Seq.(for_all is_sorted (take 100000 s)))
+    ~count:1000 ~name:"sorted return sorted lists"
+
+let gen_complete_test =
+  let gen = QCheck.Gen.(int_bound 20 >>= gen_complete int) in
+  let prop = Option.fold ~none:false ~some:complete in
+  QCheck.Test.make (QCheck.make gen) prop ~count:1000
+    ~name:"gen_complete generate complete trees"
+
+let _ =
+  QCheck_runner.run_tests ~verbose:true [ (*sorted_test; *) gen_complete_test ]

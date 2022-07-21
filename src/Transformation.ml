@@ -116,3 +116,37 @@ module Examples = struct
              sorted_1 (size - 1) (Some y) %-> fun xs -> Seq.return (x :: xs)
          | None -> Seq.empty
 end
+
+module Examples2 = struct
+  (** this module proposes examples of translation of inductive predicates to QCheck generators inspired by
+      *Generating Good Generators for Inductive Relations*
+  *)
+
+  open QCheck
+
+  (* examples from the paper talk about binary trees *)
+  type tree = Leaf | Node of int * tree * tree
+
+  let rec size = function Leaf -> 0 | Node (_, l, r) -> max (size l) (size r)
+
+  (* complete :=
+     | CompleteLeaf 0 Leaf
+     | \forall n x l r, complete n l -> complete n r -> complete (Node (S n) l r)
+  *)
+  let rec complete : tree -> bool = function
+    | Leaf -> true
+    | Node (_, l, r) -> size l = size r && complete l && complete r
+
+  let rec gen_complete gen in1 : tree option Gen.t =
+    let open Gen in
+    match in1 with
+    | 0 -> return (Some Leaf)
+    | n when n > 0 -> (
+        gen_complete gen (n - 1) >>= function
+        | Some l -> (
+            gen_complete gen (n - 1) >>= function
+            | Some r -> gen >>= fun x -> return (Some (Node (x, l, r)))
+            | None -> return None)
+        | None -> return None)
+    | _ -> return None
+end
