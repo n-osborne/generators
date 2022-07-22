@@ -25,5 +25,30 @@ let gen_complete_test =
   QCheck.Test.make (QCheck.make gen) prop ~count:1000
     ~name:"gen_complete generate complete trees"
 
+let gen_bst_test =
+  let gen =
+    QCheck.Gen.(
+      int_bound 20 >>= fun size -> gen_bst size Int.min_int Int.max_int)
+  in
+  QCheck.Test.make (QCheck.make gen)
+    (bst Int.min_int Int.max_int)
+    ~count:1000 ~name:"gen_bst generates bsts"
+
+let gen_bst_opt_test =
+  let prop = Option.fold ~none:false ~some:(bst Int.min_int Int.max_int) in
+  let gen =
+    QCheck.Gen.(
+      int_bound 20 >>= fun size -> gen_bst_opt size Int.min_int Int.max_int)
+  in
+  QCheck.Test.make
+    (QCheck.make ~print:(Option.fold ~none:"None" ~some:to_string) gen)
+    prop ~count:1000 ~name:"gen_bst generates bsts"
+
 let _ =
-  QCheck_runner.run_tests ~verbose:true [ (*sorted_test; *) gen_complete_test ]
+  QCheck_runner.run_tests ~verbose:true
+    [
+      (*sorted_test; *)
+      (* gen_complete_test; *)
+      (* gen_bst_test; *)
+      gen_bst_opt_test;
+    ]

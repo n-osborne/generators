@@ -11,6 +11,17 @@ def distribution_bool_list():
     plt.savefig('distribution_bool_list.png')
     plt.clf()
 
+def distribution_sorted_nat_list():
+    with open('distribution_sorted_nat_list.data') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        data   = np.transpose(np.array([ [int(row[0]), int(row[1])] for row  in reader]))
+        n      = np.sum(data[1])
+    plt.xlabel('nat list view as a nat (' + str(n) + ' lists generated)')
+    plt.ylabel('number of list generated with Isable/HOL approach')
+    plt.bar(data[0][400:700], data[1][400:700], color='r', width=1)
+    plt.savefig('distribution_sorted_nat_list.png')
+    plt.clf()
+
 def time_nat_list():
     with open('time_nat_list_naive.data') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
@@ -32,5 +43,6 @@ def time_nat_list():
     plt.clf()
 
 if __name__ == '__main__':
-    distribution_bool_list()
-    time_nat_list()
+#    distribution_bool_list()
+#    time_nat_list()
+    distribution_sorted_nat_list()

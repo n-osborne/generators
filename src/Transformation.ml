@@ -127,7 +127,14 @@ module Examples2 = struct
   (* examples from the paper talk about binary trees *)
   type tree = Leaf | Node of int * tree * tree
 
-  let rec size = function Leaf -> 0 | Node (_, l, r) -> max (size l) (size r)
+  let rec size = function
+    | Leaf -> 0
+    | Node (_, l, r) -> 1 + max (size l) (size r)
+
+  let rec to_string = function
+    | Leaf -> "leaf"
+    | Node (i, l, r) ->
+        Int.to_string i ^ "(" ^ to_string l ^ ", " ^ to_string r ^ ")"
 
   (* complete :=
      | CompleteLeaf 0 Leaf
@@ -149,4 +156,75 @@ module Examples2 = struct
             | None -> return None)
         | None -> return None)
     | _ -> return None
+
+  let rec rm l i =
+    match l with [] -> [] | x :: xs -> if i = 0 then xs else x :: rm xs (i - 1)
+
+  exception Internal_error of string
+
+  let rec backtrack_opt l =
+    match l with
+    | [] -> raise (Internal_error "backtrack_opt")
+    | xs -> (
+        let i = Random.int (List.length xs) in
+        let open Gen in
+        List.nth xs i >>= function
+        | Some x -> return (Some x)
+        | None -> backtrack_opt (rm l i))
+
+  let rec backtrack = function
+    | [] -> raise (Internal_error "backtrack")
+    | xs -> (
+        let i = Random.int (List.length xs) in
+        try
+          (* for some obscure reason, the exception is not caught *)
+          let open Gen in
+          List.nth xs i >>= fun x -> return x
+        with _ -> backtrack (rm xs i))
+
+  let rec bst lo hi = function
+    | Leaf -> true
+    | Node (i, l, r) -> lo <= i && i <= hi && bst lo i l && bst i hi r
+
+  (* example from the paper but with exception instead of options *)
+  let rec gen_bst size in1 in2 : tree Gen.t =
+    let open Gen in
+    match size with
+    | 0 -> return Leaf
+    | s when s > 0 ->
+        backtrack
+          [
+            return Leaf;
+            ( small_nat >>= fun n ->
+              let x = n + in1 in
+              assume (x < in2);
+              (* original version uses a conditional branchment here *)
+              gen_bst (s - 1) in1 x >>= fun l ->
+              gen_bst (s - 1) x in2 >>= fun r -> return (Node (x, l, r)) );
+          ]
+    | _ -> raise (Internal_error "negative size")
+
+  (* in1 is lo and in2 is hi *)
+  let rec gen_bst_opt size in1 in2 : tree option Gen.t =
+    let open Gen in
+    match size with
+    | 0 -> return (Some Leaf)
+    | s when s > 0 ->
+        backtrack_opt
+          [
+            return (Some Leaf);
+            (* either a leaf so that we can alwayse generate something *)
+            (* or a node; but that can fail *)
+            ( int_bound 10 >>= fun n ->
+              let x = n + in1 in
+              if x < in2 then
+                gen_bst_opt (s - 1) in1 x >>= function
+                | None -> return None
+                | Some l -> (
+                    gen_bst_opt (s - 1) x in2 >>= function
+                    | None -> return None
+                    | Some r -> return (Some (Node (x, l, r))))
+              else return None );
+          ]
+    | _ -> failwith "negative size"
 end
