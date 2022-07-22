@@ -1,6 +1,6 @@
 (library
  (name experiment)
- (modules Experiment polytypic Spaces transformation)
+ (modules Experiment Polytypic Spaces Transformation Combinators)
  (libraries qcheck either))
 (env
   (dev

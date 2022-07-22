@@ -42,7 +42,19 @@ def time_nat_list():
     plt.savefig('time_nat_list.png')
     plt.clf()
 
+def sorted_list_distribution(filename):
+    with open(filename) as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        data   = np.array([[ int(s) for s in row] for row in reader])[0]
+    X = np.arange(len(data))
+    plt.xlabel('size of the sorted lists')
+    plt.ylabel('number of generated list')
+    plt.bar(X, data)
+    plt.show()
+    plt.clf()
+
 if __name__ == '__main__':
 #    distribution_bool_list()
 #    time_nat_list()
-    distribution_sorted_nat_list()
+#    distribution_sorted_nat_list()
+    sorted_list_distribution('sorted_list_distribution_backtrack_pop_256.data')

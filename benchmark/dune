@@ -12,3 +12,8 @@
  (name bench_transformation)
  (modules bench_transformation)
  (libraries experiment))
+
+(executable
+ (name bench_combinators)
+ (modules bench_combinators)
+ (libraries mtime.clock.os experiment))
